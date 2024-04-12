@@ -8,7 +8,7 @@ const app = express();
 const port = 3001;
 
 app.use(bodyParser.json());
-app.use(cors({ origin: '*' }));
+app.use(cors());
 
 app.get('/', (req, res) => {
     res.send('<h1>Hello, Express.js Server!</h1>');
