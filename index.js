@@ -9,7 +9,7 @@ const port = 3001;
 
 app.use(bodyParser.json());
 app.use(cors());
-
+app.use(express.json());
 app.get('/', (req, res) => {
     res.send('<h1>Hello, Express.js Server!</h1>');
 });
@@ -87,6 +87,11 @@ app.get('/', (req, res) => {
 //     }
 // })
 app.post('/completions', async (req, res) => {
+    // Ensure the request body contains the expected structure
+    if (!req.body || typeof req.body.message !== 'string') {
+        return res.status(400).json({ error: 'Invalid request data' });
+    }
+
     // Set up the request payload
     const data = {
         model: 'gpt-3.5-turbo',
@@ -115,7 +120,7 @@ app.post('/completions', async (req, res) => {
         const response = await axios(axiosOptions);
         res.send(response.data);
     } catch (error) {
-        console.log('Error:', error);
+        console.error('Error:', error);
         res.status(500).json({ error: 'Error fetching data from OpenAI API' });
     }
 });
