@@ -93,17 +93,29 @@ app.post('/completions', async (req, res) => {
     }
 
     // Set up the request payload
+    // const data = {
+    //     model: 'gpt-3.5-turbo',
+    //     messages: [
+    //         {
+    //             role: 'user',
+    //             content: req.body.message,
+    //         },
+    //     ],
+    //     max_tokens: 100,
+    // };
+    const currentMessage = req.body.message;
+
+    // Retrieve the previous messages from the request body, if available
+    const previousMessages = req.body.previousMessages || [];
+
+    // Construct the messages array including both the previous messages and the current message
+    const messages = [...previousMessages, { role: 'user', content: currentMessage }];
+
     const data = {
         model: 'gpt-3.5-turbo',
-        messages: [
-            {
-                role: 'user',
-                content: req.body.message,
-            },
-        ],
+        messages: messages,
         max_tokens: 100,
     };
-
     // Define the Axios request options
     const axiosOptions = {
         method: 'post',
