@@ -637,7 +637,9 @@ const functionConfigs = [
     squareFunction,
     loanCalculationFunction,
 ];
-
+app.get('/', (req, res)=>{
+    res.send("Runnning successfully");
+})
 // Handle requests to the /completions endpoint
 app.post('/completions', async (req, res) => {
     const { message, previousMessages } = req.body;
