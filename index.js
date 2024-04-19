@@ -382,10 +382,163 @@
 // app.listen(port, () => {
 //     console.log(`Server running on http://localhost:${port}`);
 // });
+// const express = require('express');
+// const bodyParser = require('body-parser');
+// const cors = require('cors');
+// const axios = require('axios');
+// require('dotenv').config();
+
+// const app = express();
+// const port = 3001;
+
+// app.use(bodyParser.json());
+// app.use(cors());
+
+// // Function to square a numbe
+// // Function to calculate monthly installment for a loan
+// function calculateLoanInstallment(loanAmount, annualInterestRate, loanTermYears) {
+//     const monthlyInterestRate = (annualInterestRate / 100) / 12;
+//     const totalPayments = loanTermYears * 12;
+//     const monthlyInstallment = (loanAmount * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -totalPayments));
+//     return monthlyInstallment.toFixed(2);
+// }
+
+// // Define the function call configurations for OpenAI
+// const squareFunction = {
+//     name: 'square_number',
+//     description: 'Calculate the square of a given number.',
+//     parameters: {
+//         type: 'object',
+//         properties: {
+//             number: {
+//                 type: 'number',
+//                 description: 'The number to square.',
+//             },
+//         },
+//         required: ['number'],
+//     },
+// };
+
+// const loanCalculationFunction = {
+//     name: 'calculate_loan_installment',
+//     description: 'Calculate the monthly installment for a loan.',
+//     parameters: {
+//         type: 'object',
+//         properties: {
+//             loan_amount: {
+//                 type: 'number',
+//                 description: 'The loan amount in Rupees.',
+//             },
+//             annual_interest_rate: {
+//                 type: 'number',
+//                 description: 'The annual interest rate in percentage.',
+//             },
+//             loan_term_years: {
+//                 type: 'integer',
+//                 description: 'The loan term in years.',
+//             },
+//         },
+//         required: ['loan_amount', 'annual_interest_rate', 'loan_term_years'],
+//     },
+// };
+
+// // Endpoint for handling requests
+// app.post('/completions', async (req, res) => {
+//     const { message, previousMessages } = req.body;
+
+//     if (!message || typeof message !== 'string') {
+//         return res.status(400).json({ error: 'Invalid request data' });
+//     }
+
+//     // Combine previous messages with the current message
+//     const messages = [
+//         ...(previousMessages || []),
+//         { role: 'user', content: message },
+//     ];
+
+//     const data = {
+//         model: 'gpt-3.5-turbo',
+//         messages: messages,
+//         max_tokens: 2000,
+//         functions: [squareFunction, loanCalculationFunction],
+//         function_call: 'auto',
+//     };
+
+//     try {
+//         const response = await axios.post('https://api.openai.com/v1/chat/completions', data, {
+//             headers: {
+//                 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+//                 'Content-Type': 'application/json',
+//             },
+//         });
+
+//         const choice = response.data.choices[0];
+//         const resultMessage = choice.message;
+
+//         // Check if there is a function call in the response
+//         if (resultMessage.function_call) {
+//             const functionCall = resultMessage.function_call;
+
+//             if (functionCall.name === 'square_number') {
+//                 // Parse the function call arguments and calculate the square of the number
+//                 const params = JSON.parse(functionCall.arguments);
+//                 const number = params.number;
+//                 const squaredNumber = squareNumber(number);
+
+//                 // Create a function call response message
+//                 const functionResponse = {
+//                     role: 'function',
+//                     name: functionCall.name,
+//                     content: `The square of the number ${number} is ${squaredNumber}.`,
+//                 };
+
+//                 // Send the function response back to the client
+//                 return res.json({ role: 'assistant', content: functionResponse.content });
+//             } else if (functionCall.name === 'calculate_loan_installment') {
+//                 // Parse the function call arguments and calculate the monthly installment for the loan
+//                 const params = JSON.parse(functionCall.arguments);
+//                 const loanAmount = params.loan_amount;
+//                 const annualInterestRate = params.annual_interest_rate;
+//                 const loanTermYears = params.loan_term_years;
+                
+//                 const monthlyInstallment = calculateLoanInstallment(loanAmount, annualInterestRate, loanTermYears);
+
+//                 // Create a function call response message
+//                 const functionResponse = {
+//                     role: 'function',
+//                     name: functionCall.name,
+//                     content: `The monthly installment for a loan of Rs ${loanAmount} at ${annualInterestRate}% interest for ${loanTermYears} years is Rs ${monthlyInstallment}.`,
+//                 };
+
+//                 // Send the function response back to the client
+//                 return res.json({ role: 'assistant', content: functionResponse.content });
+//             }
+//         }
+
+//         // If there is no function call, simply send the response message content
+//         return res.json({
+//             role: resultMessage.role,
+//             content: resultMessage.content,
+//         });
+//     } catch (error) {
+//         console.error('Error:', error);
+//         if (error.response && error.response.data) {
+//             console.error('OpenAI API Error:', error.response.data);
+//         }
+//         res.status(500).json({ error: 'Internal Server Error' });
+//     }
+// });
+
+// // Start the server
+// app.listen(port, () => {
+//     console.log(`Server running on http://localhost:${port}`);
+// });
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const axios = require('axios');
+const mysql = require('mysql2');
+
 require('dotenv').config();
 
 const app = express();
@@ -394,55 +547,36 @@ const port = 3001;
 app.use(bodyParser.json());
 app.use(cors());
 
-// Function to square a number
-function squareNumber(number) {
-    return number * number;
-}
+// Create a connection to the MySQL database
+const connection = mysql.createConnection({
+    host: process.env.DB_HOST, // Replace with your MySQL database host
+    user: process.env.DB_USER, // Replace with your MySQL database username
+    password: process.env.DB_PASSWORD, // Replace with your MySQL database password
+    database: process.env.DB_NAME, // Replace with your MySQL database name
+});
 
-// Function to calculate monthly installment for a loan
-function calculateLoanInstallment(loanAmount, annualInterestRate, loanTermYears) {
-    const monthlyInterestRate = (annualInterestRate / 100) / 12;
-    const totalPayments = loanTermYears * 12;
-    const monthlyInstallment = (loanAmount * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -totalPayments));
-    return monthlyInstallment.toFixed(2);
-}
+// Connect to the database
+connection.connect((err) => {
+    if (err) {
+        console.error('Error connecting to MySQL:', err);
+    } else {
+        console.log('Connected to MySQL');
+    }
+});
 
 // Define the function call configurations for OpenAI
-const squareFunction = {
-    name: 'square_number',
-    description: 'Calculate the square of a given number.',
+const databaseFunction = {
+    name: 'execute_query',
+    description: 'Execute a query against the MySQL database.',
     parameters: {
         type: 'object',
         properties: {
-            number: {
-                type: 'number',
-                description: 'The number to square.',
+            query: {
+                type: 'string',
+                description: 'The SQL query to execute.',
             },
         },
-        required: ['number'],
-    },
-};
-
-const loanCalculationFunction = {
-    name: 'calculate_loan_installment',
-    description: 'Calculate the monthly installment for a loan.',
-    parameters: {
-        type: 'object',
-        properties: {
-            loan_amount: {
-                type: 'number',
-                description: 'The loan amount in dollars.',
-            },
-            annual_interest_rate: {
-                type: 'number',
-                description: 'The annual interest rate in percentage.',
-            },
-            loan_term_years: {
-                type: 'integer',
-                description: 'The loan term in years.',
-            },
-        },
-        required: ['loan_amount', 'annual_interest_rate', 'loan_term_years'],
+        required: ['query'],
     },
 };
 
@@ -463,18 +597,22 @@ app.post('/completions', async (req, res) => {
     const data = {
         model: 'gpt-3.5-turbo',
         messages: messages,
-        max_tokens: 2000,
-        functions: [squareFunction, loanCalculationFunction],
+        max_tokens: 1000,
+        functions: [databaseFunction], // Add function configurations
         function_call: 'auto',
     };
 
     try {
-        const response = await axios.post('https://api.openai.com/v1/chat/completions', data, {
-            headers: {
-                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-                'Content-Type': 'application/json',
-            },
-        });
+        const response = await axios.post(
+            'https://api.openai.com/v1/chat/completions',
+            data,
+            {
+                headers: {
+                    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
 
         const choice = response.data.choices[0];
         const resultMessage = choice.message;
@@ -483,52 +621,33 @@ app.post('/completions', async (req, res) => {
         if (resultMessage.function_call) {
             const functionCall = resultMessage.function_call;
 
-            if (functionCall.name === 'square_number') {
-                // Parse the function call arguments and calculate the square of the number
-                const params = JSON.parse(functionCall.arguments);
-                const number = params.number;
-                const squaredNumber = squareNumber(number);
+            if (functionCall.name === 'execute_query') {
+                // Parse the function call arguments
+                const { query } = JSON.parse(functionCall.arguments);
 
-                // Create a function call response message
-                const functionResponse = {
-                    role: 'function',
-                    name: functionCall.name,
-                    content: `The square of the number ${number} is ${squaredNumber}.`,
-                };
+                // Execute the query against the MySQL database
+                connection.query(query, (err, results) => {
+                    if (err) {
+                        console.error('Error executing query:', err);
+                        return res.status(500).json({ error: 'Error executing query' });
+                    }
 
-                // Send the function response back to the client
-                return res.json({ role: 'assistant', content: functionResponse.content });
-            } else if (functionCall.name === 'calculate_loan_installment') {
-                // Parse the function call arguments and calculate the monthly installment for the loan
-                const params = JSON.parse(functionCall.arguments);
-                const loanAmount = params.loan_amount;
-                const annualInterestRate = params.annual_interest_rate;
-                const loanTermYears = params.loan_term_years;
-                
-                const monthlyInstallment = calculateLoanInstallment(loanAmount, annualInterestRate, loanTermYears);
-
-                // Create a function call response message
-                const functionResponse = {
-                    role: 'function',
-                    name: functionCall.name,
-                    content: `The monthly installment for a loan of Rs ${loanAmount} at ${annualInterestRate}% interest for ${loanTermYears} years is Rs ${monthlyInstallment}.`,
-                };
-
-                // Send the function response back to the client
-                return res.json({ role: 'assistant', content: functionResponse.content });
+                    // Send the results back to the client
+                    return res.json(results);
+                });
+            } else {
+                // If function call name is not recognized, handle appropriately
+                return res.status(400).json({ error: 'Unknown function call' });
             }
+        } else {
+            // If no function call, return the message content as is
+            return res.json({
+                role: resultMessage.role,
+                content: resultMessage.content,
+            });
         }
-
-        // If there is no function call, simply send the response message content
-        return res.json({
-            role: resultMessage.role,
-            content: resultMessage.content,
-        });
     } catch (error) {
-        console.error('Error:', error);
-        if (error.response && error.response.data) {
-            console.error('OpenAI API Error:', error.response.data);
-        }
+        console.error('Error with OpenAI API:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
