@@ -533,26 +533,28 @@
 // app.listen(port, () => {
 //     console.log(`Server running on http://localhost:${port}`);
 // });
+// Import necessary packages
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const axios = require('axios');
 const mysql = require('mysql2');
-
 require('dotenv').config();
 
+// Initialize the app
 const app = express();
 const port = 3001;
 
+// Configure middleware
 app.use(bodyParser.json());
 app.use(cors());
 
 // Create a connection to the MySQL database
 const connection = mysql.createConnection({
-    host: process.env.DB_HOST, // Replace with your MySQL database host
-    user: process.env.DB_USER, // Replace with your MySQL database username
-    password: process.env.DB_PASSWORD, // Replace with your MySQL database password
-    database: process.env.DB_NAME, // Replace with your MySQL database name
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
 });
 
 // Connect to the database
@@ -564,26 +566,83 @@ connection.connect((err) => {
     }
 });
 
-// Define the function call configurations for OpenAI
-const databaseFunction = {
-    name: 'execute_query',
-    description: 'Execute a query against the MySQL database.',
+// Function to square a number
+function squareNumber(number) {
+    return number * number;
+}
+
+// Function to calculate monthly installment for a loan
+function calculateLoanInstallment(loanAmount, annualInterestRate, loanTermYears) {
+    const monthlyInterestRate = (annualInterestRate / 100) / 12;
+    const totalPayments = loanTermYears * 12;
+    const monthlyInstallment = (loanAmount * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -totalPayments));
+    return monthlyInstallment.toFixed(2);
+}
+
+// Define function call configurations
+const squareFunction = {
+    name: 'square_number',
+    description: 'Calculate the square of a given number.',
     parameters: {
         type: 'object',
         properties: {
-            query: {
-                type: 'string',
-                description: 'The SQL query to execute.',
+            number: {
+                type: 'number',
+                description: 'The number to square.',
             },
         },
-        required: ['query'],
+        required: ['number'],
     },
 };
 
-// Endpoint for handling requests
+const loanCalculationFunction = {
+    name: 'calculate_loan_installment',
+    description: 'Calculate the monthly installment for a loan.',
+    parameters: {
+        type: 'object',
+        properties: {
+            loan_amount: {
+                type: 'number',
+                description: 'The loan amount in rupees.',
+            },
+            annual_interest_rate: {
+                type: 'number',
+                description: 'The annual interest rate in percentage.',
+            },
+            loan_term_years: {
+                type: 'integer',
+                description: 'The loan term in years.',
+            },
+        },
+        required: ['loan_amount', 'annual_interest_rate', 'loan_term_years'],
+    },
+};
+
+// Combine all function configurations for OpenAI API
+const functionConfigs = [
+    {
+        name: 'execute_query',
+        description: 'Execute a query against the MySQL database.',
+        parameters: {
+            type: 'object',
+            properties: {
+                query: {
+                    type: 'string',
+                    description: 'The SQL query to execute.',
+                },
+            },
+            required: ['query'],
+        },
+    },
+    squareFunction,
+    loanCalculationFunction,
+];
+
+// Handle requests to the /completions endpoint
 app.post('/completions', async (req, res) => {
     const { message, previousMessages } = req.body;
 
+    // Validate the request
     if (!message || typeof message !== 'string') {
         return res.status(400).json({ error: 'Invalid request data' });
     }
@@ -594,18 +653,19 @@ app.post('/completions', async (req, res) => {
         { role: 'user', content: message },
     ];
 
-    const data = {
+    const requestData = {
         model: 'gpt-3.5-turbo',
         messages: messages,
         max_tokens: 1000,
-        functions: [databaseFunction], // Add function configurations
+        functions: functionConfigs,
         function_call: 'auto',
     };
 
     try {
+        // Send the request to the OpenAI API
         const response = await axios.post(
             'https://api.openai.com/v1/chat/completions',
-            data,
+            requestData,
             {
                 headers: {
                     'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -614,40 +674,102 @@ app.post('/completions', async (req, res) => {
             }
         );
 
+        // Handle the API response
         const choice = response.data.choices[0];
         const resultMessage = choice.message;
 
         // Check if there is a function call in the response
         if (resultMessage.function_call) {
             const functionCall = resultMessage.function_call;
+            const functionName = functionCall.name;
+            const params = JSON.parse(functionCall.arguments);
 
-            if (functionCall.name === 'execute_query') {
-                // Parse the function call arguments
-                const { query } = JSON.parse(functionCall.arguments);
+            if (functionName === 'execute_query') {
+                const query = params.query;
 
-                // Execute the query against the MySQL database
-                connection.query(query, (err, results) => {
-                    if (err) {
-                        console.error('Error executing query:', err);
-                        return res.status(500).json({ error: 'Error executing query' });
-                    }
+                // Modify the query to retrieve users and orders using JOIN
+                if (query.toLowerCase() === 'show all users and orders in database') {
+                    // Use a SQL query to fetch user and order data with a LEFT JOIN
+                    const sqlQuery = `
+                        SELECT 
+                            users.id AS user_id,
+                            users.name AS user_name,
+                            users.email,
+                            users.age,
+                            orders.id AS order_id,
+                            orders.order_date,
+                            orders.amount AS order_amount,
+                            orders.status AS order_status
+                        FROM 
+                            users
+                        LEFT JOIN
+                            orders ON users.id = orders.user_id;
+                    `;
+                    connection.query(sqlQuery, (err, results) => {
+                        if (err) {
+                            console.error('Error executing query:', err);
+                            return res.status(500).json({ error: 'Error executing query' });
+                        }
 
-                    // Send the results back to the client
-                    return res.json(results);
-                });
+                        // Send the results back to the client
+                        console.log('show Query results:', results);
+                        res.json(results);
+                    });
+                } else {
+                    // Handle other types of queries
+                    connection.query(query, (err, results) => {
+                        if (err) {
+                            console.error('Error executing query:', err);
+                            return res.status(500).json({ error: 'Error executing query' });
+                        }
+
+                        // Send the results back to the client
+                        console.log('Query results:', results);
+                        res.json(results);
+                    });
+                }
+            } else if (functionName === 'square_number') {
+                // Calculate the square of the number
+                const squaredNumber = squareNumber(params.number);
+
+                // Create a function call response message
+                const functionResponse = {
+                    role: 'function',
+                    name: functionCall.name,
+                    content: `The square of the number ${params.number} is ${squaredNumber}.`,
+                };
+
+                // Send the function response back to the client
+                res.json({ role: 'assistant', content: functionResponse.content });
+            } else if (functionName === 'calculate_loan_installment') {
+                // Calculate the monthly installment for the loan
+                const monthlyInstallment = calculateLoanInstallment(params.loan_amount, params.annual_interest_rate, params.loan_term_years);
+
+                // Create a function call response message
+                const functionResponse = {
+                    role: 'function',
+                    name: functionCall.name,
+                    content: `The monthly installment for a loan of Rs ${params.loan_amount} at ${params.annual_interest_rate}% interest for ${params.loan_term_years} years is Rs ${monthlyInstallment}.`,
+                };
+
+                // Send the function response back to the client
+                res.json({ role: 'assistant', content: functionResponse.content });
             } else {
-                // If function call name is not recognized, handle appropriately
-                return res.status(400).json({ error: 'Unknown function call' });
+                // Handle unknown function calls
+                res.status(400).json({ error: 'Unknown function call' });
             }
         } else {
-            // If no function call, return the message content as is
-            return res.json({
+            // If there is no function call, simply send the response message content
+            res.json({
                 role: resultMessage.role,
                 content: resultMessage.content,
             });
         }
     } catch (error) {
-        console.error('Error with OpenAI API:', error);
+        console.error('Error:', error);
+        if (error.response && error.response.data) {
+            console.error('OpenAI API Error:', error.response.data);
+        }
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
