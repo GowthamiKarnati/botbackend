@@ -382,65 +382,142 @@
 // app.listen(port, () => {
 //     console.log(`Server running on http://localhost:${port}`);
 // });
+
+
+
+
+
 // const express = require('express');
 // const bodyParser = require('body-parser');
 // const cors = require('cors');
 // const axios = require('axios');
 // require('dotenv').config();
-
+// const mongoose = require('mongoose');
 // const app = express();
 // const port = 3001;
 
 // app.use(bodyParser.json());
 // app.use(cors());
+// const MONGODB_URI = process.env.MONGODB_URI;
+// const currentDate = new Date();
+// // Connect to MongoDB Atlas
+// mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+// // .then(() => {
+// //     console.log('Connected to MongoDB Atlas');
 
-// // Function to square a numbe
-// // Function to calculate monthly installment for a loan
+// //     // Create a new user instance
+// //     const newOrder = new Order({
+// //         user: '662610aedd1b2b0b5246b653',
+// //         order_date: currentDate,
+// //         amount: 4000,
+        
+// //     });
+
+// //     // Save the new user to the database
+// //     newOrder.save()
+// //         .then(savedOrder => {
+// //             console.log('User saved successfully:', savedOrder);
+// //             // Handle success
+// //         })
+// //         .catch(error => {
+// //             console.error('Error saving user:', error);
+// //             // Handle error
+// //         });
+// // })
+// // .catch(error => {
+// //     console.error('Error connecting to MongoDB Atlas:', error);
+// //     // Handle connection error
+// // });
+// const db = mongoose.connection;
+
+// // Check for MongoDB connection errors
+// db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+// db.once('open', () => {
+//     console.log('Connected to MongoDB');
+// });
+// const userSchema = new mongoose.Schema({
+//     name: String,
+//     email: String,
+//     // Add other fields as needed
+// });
+
+// // Define schema for Order collection
+// const orderSchema = new mongoose.Schema({
+//     user: {
+//         type: mongoose.Schema.Types.ObjectId,
+//         ref: 'User'
+//     },
+//     order_date: Date,
+//     amount: Number,
+//     // Add other fields as needed
+// });
+
+// // Define models for User and Order collections
+// const User = mongoose.model('User', userSchema);
+// const Order = mongoose.model('Order', orderSchema);
 // function calculateLoanInstallment(loanAmount, annualInterestRate, loanTermYears) {
 //     const monthlyInterestRate = (annualInterestRate / 100) / 12;
 //     const totalPayments = loanTermYears * 12;
 //     const monthlyInstallment = (loanAmount * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -totalPayments));
 //     return monthlyInstallment.toFixed(2);
 // }
-
+// function squareNumber(number) {
+//     return number * number;
+// }
 // // Define the function call configurations for OpenAI
-// const squareFunction = {
-//     name: 'square_number',
-//     description: 'Calculate the square of a given number.',
-//     parameters: {
-//         type: 'object',
-//         properties: {
-//             number: {
-//                 type: 'number',
-//                 description: 'The number to square.',
-//             },
-//         },
-//         required: ['number'],
-//     },
-// };
+// // const squareFunction = {
+// //     name: 'square_number',
+// //     description: 'Calculate the square of a given number.',
+// //     parameters: {
+// //         type: 'object',
+// //         properties: {
+// //             number: {
+// //                 type: 'number',
+// //                 description: 'The number to square.',
+// //             },
+// //         },
+// //         required: ['number'],
+// //     },
+// // };
 
-// const loanCalculationFunction = {
-//     name: 'calculate_loan_installment',
-//     description: 'Calculate the monthly installment for a loan.',
-//     parameters: {
-//         type: 'object',
-//         properties: {
-//             loan_amount: {
-//                 type: 'number',
-//                 description: 'The loan amount in Rupees.',
+// // const loanCalculationFunction = {
+// //     name: 'calculate_loan_installment',
+// //     description: 'Calculate the monthly installment for a loan.',
+// //     parameters: {
+// //         type: 'object',
+// //         properties: {
+// //             loan_amount: {
+// //                 type: 'number',
+// //                 description: 'The loan amount in Rupees.',
+// //             },
+// //             annual_interest_rate: {
+// //                 type: 'number',
+// //                 description: 'The annual interest rate in percentage.',
+// //             },
+// //             loan_term_years: {
+// //                 type: 'integer',
+// //                 description: 'The loan term in years.',
+// //             },
+// //         },
+// //         required: ['loan_amount', 'annual_interest_rate', 'loan_term_years'],
+// //     },
+// // };
+// const functionConfigs = [
+//     {
+//         name: 'execute_query',
+//         description: 'Execute a query against the MongoDB database.',
+//         parameters: {
+//             type: 'object',
+//             properties: {
+//                 query: {
+//                     type: 'string',
+//                     description: 'The MongoDB query to execute.',
+//                 },
 //             },
-//             annual_interest_rate: {
-//                 type: 'number',
-//                 description: 'The annual interest rate in percentage.',
-//             },
-//             loan_term_years: {
-//                 type: 'integer',
-//                 description: 'The loan term in years.',
-//             },
+//             required: ['query'],
 //         },
-//         required: ['loan_amount', 'annual_interest_rate', 'loan_term_years'],
 //     },
-// };
+// ];
 
 // // Endpoint for handling requests
 // app.post('/completions', async (req, res) => {
@@ -460,7 +537,7 @@
 //         model: 'gpt-3.5-turbo',
 //         messages: messages,
 //         max_tokens: 2000,
-//         functions: [squareFunction, loanCalculationFunction],
+//         functions: functionConfigs,
 //         function_call: 'auto',
 //     };
 
@@ -475,51 +552,33 @@
 //         const choice = response.data.choices[0];
 //         const resultMessage = choice.message;
 
-//         // Check if there is a function call in the response
 //         if (resultMessage.function_call) {
 //             const functionCall = resultMessage.function_call;
-
-//             if (functionCall.name === 'square_number') {
-//                 // Parse the function call arguments and calculate the square of the number
-//                 const params = JSON.parse(functionCall.arguments);
-//                 const number = params.number;
-//                 const squaredNumber = squareNumber(number);
-
-//                 // Create a function call response message
-//                 const functionResponse = {
-//                     role: 'function',
-//                     name: functionCall.name,
-//                     content: `The square of the number ${number} is ${squaredNumber}.`,
-//                 };
-
-//                 // Send the function response back to the client
-//                 return res.json({ role: 'assistant', content: functionResponse.content });
-//             } else if (functionCall.name === 'calculate_loan_installment') {
-//                 // Parse the function call arguments and calculate the monthly installment for the loan
-//                 const params = JSON.parse(functionCall.arguments);
-//                 const loanAmount = params.loan_amount;
-//                 const annualInterestRate = params.annual_interest_rate;
-//                 const loanTermYears = params.loan_term_years;
-                
-//                 const monthlyInstallment = calculateLoanInstallment(loanAmount, annualInterestRate, loanTermYears);
-
-//                 // Create a function call response message
-//                 const functionResponse = {
-//                     role: 'function',
-//                     name: functionCall.name,
-//                     content: `The monthly installment for a loan of Rs ${loanAmount} at ${annualInterestRate}% interest for ${loanTermYears} years is Rs ${monthlyInstallment}.`,
-//                 };
-
-//                 // Send the function response back to the client
-//                 return res.json({ role: 'assistant', content: functionResponse.content });
+//             const functionName = functionCall.name;
+//             const params = JSON.parse(functionCall.arguments);
+        
+//             if (functionName === 'execute_query') {
+//                 try {
+//                     const parsedParams = JSON.parse(params);
+//                     const { query } = parsedParams;
+//                     console.log("Query:", query);
+//                     const queryResult = await db.collection('User').find(query).toArray();
+        
+//                     return res.json({ result: queryResult });
+//                 } catch (error) {
+//                     console.error('Error executing query:', error);
+//                     return res.status(500).json({ error: 'Error executing query' });
+//                 }
+//             } else {
+//                 return res.status(400).json({ error: 'Unsupported function call' });
 //             }
+//         } else {
+//             res.json({
+//                 role: resultMessage.role,
+//                 content: resultMessage.content,
+//             });
 //         }
-
-//         // If there is no function call, simply send the response message content
-//         return res.json({
-//             role: resultMessage.role,
-//             content: resultMessage.content,
-//         });
+        
 //     } catch (error) {
 //         console.error('Error:', error);
 //         if (error.response && error.response.data) {
@@ -556,7 +615,7 @@ const connection = mysql.createConnection({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
 });
-
+console.log("connection", connection);
 // Connect to the database
 connection.connect((err) => {
     if (err) {
