@@ -769,7 +769,7 @@ app.post('/completions', async (req, res) => {
                     connection.query(sqlQuery, (err, results) => {
                         if (err) {
                             console.error('Error executing query:', err);
-                            return res.status(500).json({ error: 'Error executing query' });
+                            return res.status(500).json({ err });
                         }
 
                         // Send the results back to the client
@@ -781,7 +781,7 @@ app.post('/completions', async (req, res) => {
                     connection.query(query, (err, results) => {
                         if (err) {
                             console.error('Error executing query:', err);
-                            return res.status(500).json({ error: 'Error executing query' });
+                            return res.status(500).json({ err });
                         }
 
                         // Send the results back to the client
